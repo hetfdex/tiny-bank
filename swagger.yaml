@@ -1,0 +1,177 @@
+openapi: 3.0.0
+info:
+  title: Tiny Bank API
+  version: 1.0.0
+paths:
+  /api/v1/users/:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequest"
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+  /api/v1/users/{user_id}:
+    delete:
+      summary: Deactivate a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User deactivated successfully
+        "500":
+          description: Internal server error
+  /api/v1/users/{user_id}/accounts/{account_id}:
+    put:
+      summary: Deposit into an account
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositRequest"
+      responses:
+        "200":
+          description: Deposit successful
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+    patch:
+      summary: Withdraw from an account
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawRequest"
+      responses:
+        "200":
+          description: Withdrawal successful
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+    post:
+      summary: Transfer between accounts
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      responses:
+        "200":
+          description: Transfer successful
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+    get:
+      summary: Get account balance
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account balance retrieved successfully
+        "500":
+          description: Internal server error
+  /api/v1/users/{user_id}/accounts/{account_id}/histories:
+    get:
+      summary: Get account history
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Account history retrieved successfully
+        "500":
+          description: Internal server error
+components:
+  schemas:
+    CreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+    DepositRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+    WithdrawRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+    TransferRequest:
+      type: object
+      properties:
+        receiver_user_id:
+          type: string
+        receiver_account_id:
+          type: string
+        amount:
+          type: number
