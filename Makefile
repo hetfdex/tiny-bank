@@ -1,5 +1,3 @@
-SERVICE_NAME=tiny-bank
-
 start:
 	go run main.go
 
