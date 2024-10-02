@@ -1,6 +1,9 @@
 SERVICE_NAME=tiny-bank
 
 start:
+	go run main.go
+
+start-docker:
 	docker-compose up --build
 
 tests:
