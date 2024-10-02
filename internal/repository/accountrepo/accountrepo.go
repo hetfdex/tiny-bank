@@ -16,7 +16,8 @@ var (
 type Repo interface {
 	Create(CreateRequest) (domain.Account, error)
 	Read(ReadRequest) (domain.Account, error)
-	Update(UpdateRequest) error
+	UpdateBalance(UpdateBalanceRequest) error
+	UpdateTransactions(UpdateTransactionsRequest) error
 }
 
 type repo struct {
@@ -46,8 +47,6 @@ func (r repo) Create(req CreateRequest) (domain.Account, error) {
 	account := domain.Account{
 		ID:        id,
 		CreatedAt: time.Now().UTC(),
-		Balance:   0,
-		HistoryID: req.HistoryID,
 	}
 
 	r.accounts[id] = account
@@ -60,28 +59,18 @@ func (r repo) Read(req ReadRequest) (domain.Account, error) {
 
 	defer accountsMux.Unlock()
 
-	account, exists := r.accounts[req.ID]
-
-	if !exists {
-		return domain.Account{}, errors.New("account not found")
-	}
-
-	return account, nil
+	return r.getAccount(req.ID)
 }
 
-func (r repo) Update(req UpdateRequest) error {
+func (r repo) UpdateBalance(req UpdateBalanceRequest) error {
 	accountsMux.Lock()
 
 	defer accountsMux.Unlock()
 
-	account, exists := r.accounts[req.ID]
+	account, err := r.getAccount(req.ID)
 
-	if !exists {
-		return errors.New("account not found")
-	}
-
-	if account.Balance == req.Balance {
-		return nil
+	if err != nil {
+		return err
 	}
 
 	account.Balance = int(req.Balance)
@@ -89,4 +78,32 @@ func (r repo) Update(req UpdateRequest) error {
 	r.accounts[req.ID] = account
 
 	return nil
+}
+
+func (r repo) UpdateTransactions(req UpdateTransactionsRequest) error {
+	accountsMux.Lock()
+
+	defer accountsMux.Unlock()
+
+	account, err := r.getAccount(req.ID)
+
+	if err != nil {
+		return err
+	}
+
+	account.Transactions = append(account.Transactions, req.Transaction)
+
+	r.accounts[req.ID] = account
+
+	return nil
+}
+
+func (r repo) getAccount(id string) (domain.Account, error) {
+	account, exists := r.accounts[id]
+
+	if !exists {
+		return domain.Account{}, errors.New("account not found")
+	}
+
+	return account, nil
 }

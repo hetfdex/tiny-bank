@@ -5,15 +5,14 @@ import (
 	"github.com/hetfdex/tiny-bank/internal/domain"
 	"github.com/hetfdex/tiny-bank/internal/handler"
 	"github.com/hetfdex/tiny-bank/internal/repository/accountrepo"
-	"github.com/hetfdex/tiny-bank/internal/repository/historyrepo"
 	"github.com/hetfdex/tiny-bank/internal/repository/userrepo"
 	"github.com/hetfdex/tiny-bank/internal/service"
 )
 
 func main() {
-	userRepo, accountRepo, historyRepo := configRepo()
+	userRepo, accountRepo := configRepo()
 
-	svc := configSvc(userRepo, accountRepo, historyRepo)
+	svc := configSvc(userRepo, accountRepo)
 
 	router := getRouter()
 
@@ -22,18 +21,16 @@ func main() {
 	startServer(router)
 }
 
-func configRepo() (userrepo.Repo, accountrepo.Repo, historyrepo.Repo) {
+func configRepo() (userrepo.Repo, accountrepo.Repo) {
 	return userrepo.New(make(map[string]domain.User)),
-		accountrepo.New(make(map[string]domain.Account)),
-		historyrepo.New(make(map[string]domain.History))
+		accountrepo.New(make(map[string]domain.Account))
 }
 
 func configSvc(
 	userRepo userrepo.Repo,
 	accountRepo accountrepo.Repo,
-	historyRepo historyrepo.Repo,
 ) service.Service {
-	return service.New(userRepo, accountRepo, historyRepo)
+	return service.New(userRepo, accountRepo)
 }
 
 func getRouter() *gin.Engine {

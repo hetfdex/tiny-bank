@@ -7,23 +7,17 @@ type User struct {
 	CreatedAt  time.Time
 	Active     bool
 	Name       string
-	AccountIDs []string
+	AccountIDs map[string]struct{}
 }
 
 type Account struct {
-	ID        string
-	CreatedAt time.Time
-	Balance   int
-	HistoryID string
+	ID           string
+	CreatedAt    time.Time
+	Balance      int
+	Transactions []Transaction
 }
 
-type History struct {
-	ID        string
-	CreatedAt time.Time
-	Events    []Event
-}
-
-type Event struct {
+type Transaction struct {
 	Timestamp         time.Time
 	Operation         string
 	Amount            int

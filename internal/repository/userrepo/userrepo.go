@@ -16,7 +16,8 @@ var (
 type Repo interface {
 	Create(CreateRequest) (domain.User, error)
 	Read(ReadRequest) (domain.User, error)
-	Update(UpdateRequest) error
+	UpdateStatus(UpdateStatusRequest) error
+	UpdateAccountIDs(UpdateAccountIDsRequest) error
 }
 
 type repo struct {
@@ -40,7 +41,7 @@ func (r repo) Create(req CreateRequest) (domain.User, error) {
 	id := uuid.New()
 
 	if _, exists := r.users[id]; exists {
-		return domain.User{}, errors.New("id in use")
+		return domain.User{}, errors.New("duplicate user id")
 	}
 
 	user := domain.User{
@@ -48,7 +49,7 @@ func (r repo) Create(req CreateRequest) (domain.User, error) {
 		CreatedAt:  time.Now().UTC(),
 		Active:     true,
 		Name:       req.Name,
-		AccountIDs: []string{req.AccountID},
+		AccountIDs: map[string]struct{}{},
 	}
 
 	r.users[id] = user
@@ -61,20 +62,10 @@ func (r repo) Read(req ReadRequest) (domain.User, error) {
 
 	defer usersMux.Unlock()
 
-	user, exists := r.users[req.ID]
-
-	if !exists {
-		return domain.User{}, errors.New("user not found")
-	}
-
-	if !user.Active {
-		return domain.User{}, errors.New("user not active")
-	}
-
-	return user, nil
+	return r.getActiveUser(req.ID)
 }
 
-func (r repo) Update(req UpdateRequest) error {
+func (r repo) UpdateStatus(req UpdateStatusRequest) error {
 	usersMux.Lock()
 
 	defer usersMux.Unlock()
@@ -85,13 +76,45 @@ func (r repo) Update(req UpdateRequest) error {
 		return errors.New("user not found")
 	}
 
-	if user.Active == req.Active {
-		return nil
-	}
-
 	user.Active = req.Active
 
 	r.users[req.ID] = user
 
 	return nil
+}
+
+func (r repo) UpdateAccountIDs(req UpdateAccountIDsRequest) error {
+	usersMux.Lock()
+
+	defer usersMux.Unlock()
+
+	user, err := r.getActiveUser(req.ID)
+
+	if err != nil {
+		return err
+	}
+
+	if _, exists := user.AccountIDs[req.AccountID]; exists {
+		return errors.New("duplicate account id")
+	}
+
+	user.AccountIDs[req.AccountID] = struct{}{}
+
+	r.users[req.ID] = user
+
+	return nil
+}
+
+func (r repo) getActiveUser(id string) (domain.User, error) {
+	user, exists := r.users[id]
+
+	if !exists {
+		return domain.User{}, errors.New("user not found")
+	}
+
+	if !user.Active {
+		return domain.User{}, errors.New("user not active")
+	}
+
+	return user, nil
 }

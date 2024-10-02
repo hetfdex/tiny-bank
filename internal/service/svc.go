@@ -7,83 +7,89 @@ import (
 	guuid "github.com/google/uuid"
 	"github.com/hetfdex/tiny-bank/internal/domain"
 	"github.com/hetfdex/tiny-bank/internal/repository/accountrepo"
-	"github.com/hetfdex/tiny-bank/internal/repository/historyrepo"
 	"github.com/hetfdex/tiny-bank/internal/repository/userrepo"
 )
 
 type Service interface {
-	Create(CreateRequest) (CreateResponse, error)
-	Deactivate(DeactivateRequest) error
+	CreateUser(CreateUserRequest) (CreateUserResponse, error)
+	CreateAccount(CreateAccountRequest) (CreateAccountResponse, error)
+	DeactivateUser(DeactivateUserRequest) error
 	Deposit(DepositRequest) (DepositResponse, error)
 	Withdraw(WithdrawRequest) (WithdrawResponse, error)
 	Transfer(TransferRequest) (TransferResponse, error)
 	Balance(BalanceRequest) (BalanceResponse, error)
-	History(HistoryRequest) (HistoryResponse, error)
+	Transactions(TransactionsRequest) (TransactionsResponse, error)
 }
 
 type svc struct {
 	userRepo    userrepo.Repo
 	accountRepo accountrepo.Repo
-	historyRepo historyrepo.Repo
 }
 
 func New(
 	userRepo userrepo.Repo,
 	accountRepo accountrepo.Repo,
-	historyRepo historyrepo.Repo,
 ) Service {
 	return &svc{
 		userRepo:    userRepo,
 		accountRepo: accountRepo,
-		historyRepo: historyRepo,
 	}
 }
 
-func (s svc) Create(req CreateRequest) (CreateResponse, error) {
+func (s svc) CreateUser(req CreateUserRequest) (CreateUserResponse, error) {
 	if req.Name == "" {
-		return CreateResponse{}, errors.New("invalid user name")
-	}
-
-	history, err := s.historyRepo.Create(historyrepo.CreateRequest{})
-
-	if err != nil {
-		return CreateResponse{}, err
-	}
-
-	account, err := s.accountRepo.Create(
-		accountrepo.CreateRequest{
-			HistoryID: history.ID,
-		},
-	)
-
-	if err != nil {
-		return CreateResponse{}, err
+		return CreateUserResponse{}, errors.New("invalid user name")
 	}
 
 	user, err := s.userRepo.Create(
 		userrepo.CreateRequest{
-			Name:      req.Name,
+			Name: req.Name,
+		},
+	)
+
+	if err != nil {
+		return CreateUserResponse{}, err
+	}
+
+	return CreateUserResponse{
+		UserID: user.ID,
+	}, nil
+}
+
+func (s svc) CreateAccount(req CreateAccountRequest) (CreateAccountResponse, error) {
+	if !validID(req.UserID) {
+		return CreateAccountResponse{}, errors.New("invalid user id")
+	}
+
+	account, err := s.accountRepo.Create(accountrepo.CreateRequest{})
+
+	if err != nil {
+		return CreateAccountResponse{}, err
+	}
+
+	err = s.userRepo.UpdateAccountIDs(
+		userrepo.UpdateAccountIDsRequest{
+			ID:        req.UserID,
 			AccountID: account.ID,
 		},
 	)
 
 	if err != nil {
-		return CreateResponse{}, err
+		return CreateAccountResponse{}, err
 	}
 
-	return CreateResponse{
-		ID:         user.ID,
-		AccountIDs: user.AccountIDs,
+	return CreateAccountResponse{
+		AccountID: account.ID,
 	}, nil
 }
 
-func (s svc) Deactivate(req DeactivateRequest) error {
+func (s svc) DeactivateUser(req DeactivateUserRequest) error {
 	if !validID(req.UserID) {
 		return errors.New("invalid user id")
 	}
 
-	return s.userRepo.Update(
-		userrepo.UpdateRequest{
+	return s.userRepo.UpdateStatus(
+		userrepo.UpdateStatusRequest{
 			ID:     req.UserID,
 			Active: false,
 		},
@@ -128,8 +134,8 @@ func (s svc) Deposit(req DepositRequest) (DepositResponse, error) {
 	}
 	balance := account.Balance + req.Amount
 
-	err = s.accountRepo.Update(
-		accountrepo.UpdateRequest{
+	err = s.accountRepo.UpdateBalance(
+		accountrepo.UpdateBalanceRequest{
 			ID:      req.AccountID,
 			Balance: balance,
 		},
@@ -139,10 +145,10 @@ func (s svc) Deposit(req DepositRequest) (DepositResponse, error) {
 		return DepositResponse{}, err
 	}
 
-	err = s.historyRepo.Update(
-		historyrepo.UpdateRequest{
-			ID: account.HistoryID,
-			Event: domain.Event{
+	err = s.accountRepo.UpdateTransactions(
+		accountrepo.UpdateTransactionsRequest{
+			ID: account.ID,
+			Transaction: domain.Transaction{
 				Timestamp: time.Now().UTC(),
 				Operation: "deposit",
 				Amount:    req.Amount,
@@ -202,8 +208,8 @@ func (s svc) Withdraw(req WithdrawRequest) (WithdrawResponse, error) {
 
 	balance := account.Balance - req.Amount
 
-	err = s.accountRepo.Update(
-		accountrepo.UpdateRequest{
+	err = s.accountRepo.UpdateBalance(
+		accountrepo.UpdateBalanceRequest{
 			ID:      req.AccountID,
 			Balance: balance,
 		},
@@ -213,10 +219,10 @@ func (s svc) Withdraw(req WithdrawRequest) (WithdrawResponse, error) {
 		return WithdrawResponse{}, err
 	}
 
-	err = s.historyRepo.Update(
-		historyrepo.UpdateRequest{
-			ID: account.HistoryID,
-			Event: domain.Event{
+	err = s.accountRepo.UpdateTransactions(
+		accountrepo.UpdateTransactionsRequest{
+			ID: account.ID,
+			Transaction: domain.Transaction{
 				Timestamp: time.Now().UTC(),
 				Operation: "withdraw",
 				Amount:    req.Amount,
@@ -312,8 +318,8 @@ func (s svc) Transfer(req TransferRequest) (TransferResponse, error) {
 
 	senderBalance := senderAccount.Balance - req.Amount
 
-	err = s.accountRepo.Update(
-		accountrepo.UpdateRequest{
+	err = s.accountRepo.UpdateBalance(
+		accountrepo.UpdateBalanceRequest{
 			ID:      req.SenderAccountID,
 			Balance: senderBalance,
 		},
@@ -323,8 +329,8 @@ func (s svc) Transfer(req TransferRequest) (TransferResponse, error) {
 		return TransferResponse{}, err
 	}
 
-	err = s.accountRepo.Update(
-		accountrepo.UpdateRequest{
+	err = s.accountRepo.UpdateBalance(
+		accountrepo.UpdateBalanceRequest{
 			ID:      req.ReceiverAccountID,
 			Balance: receiverAccount.Balance + req.Amount,
 		},
@@ -334,10 +340,10 @@ func (s svc) Transfer(req TransferRequest) (TransferResponse, error) {
 		return TransferResponse{}, err
 	}
 
-	err = s.historyRepo.Update(
-		historyrepo.UpdateRequest{
-			ID: senderAccount.HistoryID,
-			Event: domain.Event{
+	err = s.accountRepo.UpdateTransactions(
+		accountrepo.UpdateTransactionsRequest{
+			ID: senderAccount.ID,
+			Transaction: domain.Transaction{
 				Timestamp:         time.Now().UTC(),
 				Operation:         "transfer",
 				Amount:            req.Amount,
@@ -351,10 +357,10 @@ func (s svc) Transfer(req TransferRequest) (TransferResponse, error) {
 		return TransferResponse{}, err
 	}
 
-	err = s.historyRepo.Update(
-		historyrepo.UpdateRequest{
-			ID: receiverAccount.HistoryID,
-			Event: domain.Event{
+	err = s.accountRepo.UpdateTransactions(
+		accountrepo.UpdateTransactionsRequest{
+			ID: receiverAccount.ID,
+			Transaction: domain.Transaction{
 				Timestamp:       time.Now().UTC(),
 				Operation:       "transfer",
 				Amount:          req.Amount,
@@ -411,13 +417,13 @@ func (s svc) Balance(req BalanceRequest) (BalanceResponse, error) {
 	}, nil
 }
 
-func (s svc) History(req HistoryRequest) (HistoryResponse, error) {
+func (s svc) Transactions(req TransactionsRequest) (TransactionsResponse, error) {
 	if !validID(req.UserID) {
-		return HistoryResponse{}, errors.New("invalid user id")
+		return TransactionsResponse{}, errors.New("invalid user id")
 	}
 
 	if !validID(req.AccountID) {
-		return HistoryResponse{}, errors.New("invalid account id")
+		return TransactionsResponse{}, errors.New("invalid account id")
 	}
 
 	user, err := s.userRepo.Read(
@@ -427,11 +433,11 @@ func (s svc) History(req HistoryRequest) (HistoryResponse, error) {
 	)
 
 	if err != nil {
-		return HistoryResponse{}, err
+		return TransactionsResponse{}, err
 	}
 
 	if !userAccount(user.AccountIDs, req.AccountID) {
-		return HistoryResponse{}, errors.New("unauthorized account id")
+		return TransactionsResponse{}, errors.New("unauthorized account id")
 	}
 
 	account, err := s.accountRepo.Read(
@@ -441,21 +447,11 @@ func (s svc) History(req HistoryRequest) (HistoryResponse, error) {
 	)
 
 	if err != nil {
-		return HistoryResponse{}, err
+		return TransactionsResponse{}, err
 	}
 
-	history, err := s.historyRepo.Read(
-		historyrepo.ReadRequest{
-			ID: account.HistoryID,
-		},
-	)
-
-	if err != nil {
-		return HistoryResponse{}, err
-	}
-
-	return HistoryResponse{
-		Events: history.Events,
+	return TransactionsResponse{
+		Transactions: account.Transactions,
 	}, nil
 }
 
@@ -469,12 +465,8 @@ func validID(id string) bool {
 	return err == nil
 }
 
-func userAccount(userAccountIDs []string, accountID string) bool {
-	for _, userAccountID := range userAccountIDs {
-		if userAccountID == accountID {
-			return true
-		}
-	}
+func userAccount(userAccountIDs map[string]struct{}, accountID string) bool {
+	_, exists := userAccountIDs[accountID]
 
-	return false
+	return exists
 }

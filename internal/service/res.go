@@ -2,9 +2,12 @@ package service
 
 import "github.com/hetfdex/tiny-bank/internal/domain"
 
-type CreateResponse struct {
-	ID         string
-	AccountIDs []string
+type CreateUserResponse struct {
+	UserID string `json:"user_id"`
+}
+
+type CreateAccountResponse struct {
+	AccountID string `json:"account_id"`
 }
 
 type BalanceResponse struct {
@@ -17,6 +20,6 @@ type WithdrawResponse DepositResponse
 
 type TransferResponse DepositResponse
 
-type HistoryResponse struct {
-	Events []domain.Event `json:"events"`
+type TransactionsResponse struct {
+	Transactions []domain.Transaction `json:"transactions"`
 }

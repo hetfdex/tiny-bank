@@ -26,17 +26,18 @@ func New(svc service.Service) Handler {
 }
 
 func (h hdl) ConfigHandlers(router *gin.Engine) {
-	router.POST(baseURL, h.create)
-	router.DELETE(baseURL+":user_id", h.deactivate)
+	router.POST(baseURL, h.createUser)
+	router.POST(baseURL+":user_id", h.createAccount)
+	router.DELETE(baseURL+":user_id", h.deactivateUser)
 	router.PUT(baseURL+":user_id/accounts/:account_id", h.deposit)
 	router.PATCH(baseURL+":user_id/accounts/:account_id", h.withdraw)
 	router.POST(baseURL+":user_id/accounts/:account_id", h.transfer)
 	router.GET(baseURL+":user_id/accounts/:account_id", h.balance)
-	router.GET(baseURL+":user_id/accounts/:account_id/histories", h.history)
+	router.GET(baseURL+":user_id/accounts/:account_id/transactions", h.transactions)
 }
 
-func (h hdl) create(c *gin.Context) {
-	var req service.CreateRequest
+func (h hdl) createUser(c *gin.Context) {
+	var req service.CreateUserRequest
 
 	err := c.BindJSON(&req)
 
@@ -46,7 +47,7 @@ func (h hdl) create(c *gin.Context) {
 		return
 	}
 
-	res, err := h.svc.Create(req)
+	res, err := h.svc.CreateUser(req)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -57,9 +58,25 @@ func (h hdl) create(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 }
 
-func (h hdl) deactivate(c *gin.Context) {
-	err := h.svc.Deactivate(
-		service.DeactivateRequest{
+func (h hdl) createAccount(c *gin.Context) {
+	res, err := h.svc.CreateAccount(
+		service.CreateAccountRequest{
+			UserID: c.Param("user_id"),
+		},
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
+}
+
+func (h hdl) deactivateUser(c *gin.Context) {
+	err := h.svc.DeactivateUser(
+		service.DeactivateUserRequest{
 			UserID: c.Param("user_id"),
 		},
 	)
@@ -165,9 +182,9 @@ func (h hdl) balance(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func (h hdl) history(c *gin.Context) {
-	res, err := h.svc.History(
-		service.HistoryRequest{
+func (h hdl) transactions(c *gin.Context) {
+	res, err := h.svc.Transactions(
+		service.TransactionsRequest{
 			UserID:    c.Param("user_id"),
 			AccountID: c.Param("account_id"),
 		},

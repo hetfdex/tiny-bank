@@ -22,7 +22,13 @@ func (m *Mock) Read(req accountrepo.ReadRequest) (domain.Account, error) {
 	return args.Get(0).(domain.Account), args.Error(1)
 }
 
-func (m *Mock) Update(req accountrepo.UpdateRequest) error {
+func (m *Mock) UpdateBalance(req accountrepo.UpdateBalanceRequest) error {
+	args := m.Called(req)
+
+	return args.Error(0)
+}
+
+func (m *Mock) UpdateTransactions(req accountrepo.UpdateTransactionsRequest) error {
 	args := m.Called(req)
 
 	return args.Error(0)

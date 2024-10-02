@@ -9,13 +9,19 @@ type Mock struct {
 	mock.Mock
 }
 
-func (m *Mock) Create(req service.CreateRequest) (service.CreateResponse, error) {
+func (m *Mock) CreateUser(req service.CreateUserRequest) (service.CreateUserResponse, error) {
 	args := m.Called(req)
 
-	return args.Get(0).(service.CreateResponse), args.Error(1)
+	return args.Get(0).(service.CreateUserResponse), args.Error(1)
 }
 
-func (m *Mock) Deactivate(req service.DeactivateRequest) error {
+func (m *Mock) CreateAccount(req service.CreateAccountRequest) (service.CreateAccountResponse, error) {
+	args := m.Called(req)
+
+	return args.Get(0).(service.CreateAccountResponse), args.Error(1)
+}
+
+func (m *Mock) DeactivateUser(req service.DeactivateUserRequest) error {
 	args := m.Called(req)
 
 	return args.Error(0)
@@ -45,8 +51,8 @@ func (m *Mock) Balance(req service.BalanceRequest) (service.BalanceResponse, err
 	return args.Get(0).(service.BalanceResponse), args.Error(1)
 }
 
-func (m *Mock) History(req service.HistoryRequest) (service.HistoryResponse, error) {
+func (m *Mock) Transactions(req service.TransactionsRequest) (service.TransactionsResponse, error) {
 	args := m.Called(req)
 
-	return args.Get(0).(service.HistoryResponse), args.Error(1)
+	return args.Get(0).(service.TransactionsResponse), args.Error(1)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/hetfdex/tiny-bank/internal/repository/accountrepo"
 	"github.com/hetfdex/tiny-bank/internal/repository/userrepo"
 	"github.com/hetfdex/tiny-bank/test/mock/repository/accountrepomock"
-	"github.com/hetfdex/tiny-bank/test/mock/repository/historyrepomock"
 	"github.com/hetfdex/tiny-bank/test/mock/repository/userrepomock"
 	"github.com/pborman/uuid"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestTransfer_ErrInvalidSenderUserID(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	res, err := svc.Transfer(TransferRequest{})
 
@@ -26,7 +25,7 @@ func TestTransfer_ErrInvalidSenderUserID(t *testing.T) {
 }
 
 func TestTransfer_ErrInvalidReceiverUserID(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -40,7 +39,7 @@ func TestTransfer_ErrInvalidReceiverUserID(t *testing.T) {
 }
 
 func TestTransfer_ErrInvalidSenderAccountID(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -54,7 +53,7 @@ func TestTransfer_ErrInvalidSenderAccountID(t *testing.T) {
 }
 
 func TestTransfer_ErrInvalidReceiverAccountID(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -70,7 +69,7 @@ func TestTransfer_ErrInvalidReceiverAccountID(t *testing.T) {
 }
 
 func TestTransfer_ErrInvalidAmount(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	userID := uuid.New()
 	accountID := uuid.New()
@@ -90,7 +89,7 @@ func TestTransfer_ErrInvalidAmount(t *testing.T) {
 }
 
 func TestTransfer_ErrSameAccount(t *testing.T) {
-	svc := New(nil, nil, nil)
+	svc := New(nil, nil)
 
 	userID := uuid.New()
 	accountID := uuid.New()
@@ -126,7 +125,7 @@ func TestTransfer_ErrReadSender(t *testing.T) {
 		errMock,
 	)
 
-	svc := New(userRepo, nil, nil)
+	svc := New(userRepo, nil)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -154,16 +153,18 @@ func TestTransfer_ErrUnauthorizedAccountIDSender(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{uuid.New()},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				uuid.New(): {},
+			},
 		},
 		nil,
 	)
 
-	svc := New(userRepo, nil, nil)
+	svc := New(userRepo, nil)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -194,11 +195,13 @@ func TestTransfer_ErrReadSenderAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -215,7 +218,7 @@ func TestTransfer_ErrReadSenderAccount(t *testing.T) {
 		errMock,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -244,11 +247,13 @@ func TestTransfer_ErrInsuficientFunds(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -265,12 +270,11 @@ func TestTransfer_ErrInsuficientFunds(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   0,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -302,11 +306,13 @@ func TestTransfer_ErrReadReceiver(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -333,12 +339,11 @@ func TestTransfer_ErrReadReceiver(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -369,11 +374,13 @@ func TestTransfer_ErrUnauthorizedAccountIDReceiver(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -385,11 +392,13 @@ func TestTransfer_ErrUnauthorizedAccountIDReceiver(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{uuid.New()},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				uuid.New(): {},
+			},
 		},
 		nil,
 	)
@@ -406,12 +415,11 @@ func TestTransfer_ErrUnauthorizedAccountIDReceiver(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -444,11 +452,13 @@ func TestTransfer_ErrReadReceiverAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -460,11 +470,13 @@ func TestTransfer_ErrReadReceiverAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -481,7 +493,6 @@ func TestTransfer_ErrReadReceiverAccount(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -496,7 +507,7 @@ func TestTransfer_ErrReadReceiverAccount(t *testing.T) {
 		errMock,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -529,11 +540,13 @@ func TestTransfer_ErrUpdateSenderAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -545,11 +558,13 @@ func TestTransfer_ErrUpdateSenderAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -566,7 +581,6 @@ func TestTransfer_ErrUpdateSenderAccount(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -581,14 +595,13 @@ func TestTransfer_ErrUpdateSenderAccount(t *testing.T) {
 			ID:        receiverAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   10,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      senderAccountID,
 			Balance: 10,
 		},
@@ -596,7 +609,7 @@ func TestTransfer_ErrUpdateSenderAccount(t *testing.T) {
 		errMock,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -629,11 +642,13 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -645,11 +660,13 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -666,7 +683,6 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -681,14 +697,13 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 			ID:        receiverAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   10,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      senderAccountID,
 			Balance: 10,
 		},
@@ -697,8 +712,8 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      receiverAccountID,
 			Balance: 20,
 		},
@@ -706,7 +721,7 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 		errMock,
 	)
 
-	svc := New(userRepo, accountRepo, nil)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -722,8 +737,8 @@ func TestTransfer_ErrUpdateReceiverAccount(t *testing.T) {
 	assert.Equal(t, errMock, err)
 }
 
-func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
-	errMock := errors.New("error history")
+func TestTransfer_ErrUpdateSenderTransactions(t *testing.T) {
+	errMock := errors.New("error transaction")
 
 	senderUserID := uuid.New()
 	receiverUserID := uuid.New()
@@ -739,11 +754,13 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -755,11 +772,13 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -776,7 +795,6 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -791,14 +809,13 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 			ID:        receiverAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   10,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      senderAccountID,
 			Balance: 10,
 		},
@@ -807,8 +824,8 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      receiverAccountID,
 			Balance: 20,
 		},
@@ -816,16 +833,14 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 		nil,
 	)
 
-	historyRepo := &historyrepomock.Mock{}
-
-	historyRepo.On(
-		"Update",
-		mock.AnythingOfType("historyrepo.UpdateRequest"),
+	accountRepo.On(
+		"UpdateTransactions",
+		mock.AnythingOfType("accountrepo.UpdateTransactionsRequest"),
 	).Return(
 		errMock,
 	)
 
-	svc := New(userRepo, accountRepo, historyRepo)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -841,8 +856,8 @@ func TestTransfer_ErrUpdateSenderHistory(t *testing.T) {
 	assert.Equal(t, errMock, err)
 }
 
-func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
-	errMock := errors.New("error history")
+func TestTransfer_ErrUpdateReceiverTransactions(t *testing.T) {
+	errMock := errors.New("error transaction")
 
 	senderUserID := uuid.New()
 	receiverUserID := uuid.New()
@@ -858,11 +873,13 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -874,11 +891,13 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -895,7 +914,6 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -910,14 +928,13 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 			ID:        receiverAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   10,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      senderAccountID,
 			Balance: 10,
 		},
@@ -926,8 +943,8 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      receiverAccountID,
 			Balance: 20,
 		},
@@ -935,23 +952,21 @@ func TestTransfer_ErrUpdateReceiverHistory(t *testing.T) {
 		nil,
 	)
 
-	historyRepo := &historyrepomock.Mock{}
-
-	historyRepo.On(
-		"Update",
-		mock.AnythingOfType("historyrepo.UpdateRequest"),
+	accountRepo.On(
+		"UpdateTransactions",
+		mock.AnythingOfType("accountrepo.UpdateTransactionsRequest"),
 	).Return(
 		nil,
 	).Once()
 
-	historyRepo.On(
-		"Update",
-		mock.AnythingOfType("historyrepo.UpdateRequest"),
+	accountRepo.On(
+		"UpdateTransactions",
+		mock.AnythingOfType("accountrepo.UpdateTransactionsRequest"),
 	).Return(
 		errMock,
 	).Once()
 
-	svc := New(userRepo, accountRepo, historyRepo)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{
@@ -982,11 +997,13 @@ func TestTransfer_Ok(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         senderUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "joe",
-			AccountIDs: []string{senderAccountID},
+			ID:        senderUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "joe",
+			AccountIDs: map[string]struct{}{
+				senderAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -998,11 +1015,13 @@ func TestTransfer_Ok(t *testing.T) {
 		},
 	).Return(
 		domain.User{
-			ID:         receiverUserID,
-			CreatedAt:  time.Now().UTC(),
-			Active:     true,
-			Name:       "mary",
-			AccountIDs: []string{receiverAccountID},
+			ID:        receiverUserID,
+			CreatedAt: time.Now().UTC(),
+			Active:    true,
+			Name:      "mary",
+			AccountIDs: map[string]struct{}{
+				receiverAccountID: {},
+			},
 		},
 		nil,
 	)
@@ -1019,7 +1038,6 @@ func TestTransfer_Ok(t *testing.T) {
 			ID:        senderAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   20,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
@@ -1034,14 +1052,13 @@ func TestTransfer_Ok(t *testing.T) {
 			ID:        receiverAccountID,
 			CreatedAt: time.Now().UTC(),
 			Balance:   10,
-			HistoryID: uuid.New(),
 		},
 		nil,
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      senderAccountID,
 			Balance: 10,
 		},
@@ -1050,8 +1067,8 @@ func TestTransfer_Ok(t *testing.T) {
 	)
 
 	accountRepo.On(
-		"Update",
-		accountrepo.UpdateRequest{
+		"UpdateBalance",
+		accountrepo.UpdateBalanceRequest{
 			ID:      receiverAccountID,
 			Balance: 20,
 		},
@@ -1059,16 +1076,14 @@ func TestTransfer_Ok(t *testing.T) {
 		nil,
 	)
 
-	historyRepo := &historyrepomock.Mock{}
-
-	historyRepo.On(
-		"Update",
-		mock.AnythingOfType("historyrepo.UpdateRequest"),
+	accountRepo.On(
+		"UpdateTransactions",
+		mock.AnythingOfType("accountrepo.UpdateTransactionsRequest"),
 	).Return(
 		nil,
 	)
 
-	svc := New(userRepo, accountRepo, historyRepo)
+	svc := New(userRepo, accountRepo)
 
 	res, err := svc.Transfer(
 		TransferRequest{

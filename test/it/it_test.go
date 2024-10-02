@@ -6,7 +6,6 @@ import (
 
 	"github.com/hetfdex/tiny-bank/internal/domain"
 	"github.com/hetfdex/tiny-bank/internal/repository/accountrepo"
-	"github.com/hetfdex/tiny-bank/internal/repository/historyrepo"
 	"github.com/hetfdex/tiny-bank/internal/repository/userrepo"
 	"github.com/hetfdex/tiny-bank/internal/service"
 	"github.com/stretchr/testify/suite"
@@ -24,47 +23,65 @@ func TestIntegrationTestSuite(t *testing.T) {
 func (s *IntegrationTestSuite) SetupSuite() {
 	userRepo := userrepo.New(make(map[string]domain.User))
 	accountRepo := accountrepo.New(make(map[string]domain.Account))
-	historyRepo := historyrepo.New(make(map[string]domain.History))
 
-	svc := service.New(userRepo, accountRepo, historyRepo)
+	svc := service.New(userRepo, accountRepo)
 
 	s.svc = svc
 }
 
-func (s *IntegrationTestSuite) TestCreate() {
-	res, err := s.svc.Create(
-		service.CreateRequest{
+func (s *IntegrationTestSuite) TestCreateUser() {
+	res, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
-	s.Assert().NotEmpty(res.ID)
-	s.Assert().Equal(1, len(res.AccountIDs))
+	s.Assert().NotEmpty(res.UserID)
+	s.Assert().Nil(err)
+}
 
+func (s *IntegrationTestSuite) TestCreateAccount() {
+	createUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
+			Name: "joe",
+		},
+	)
+
+	s.Assert().Nil(err)
+
+	createAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createUserRes),
+	)
+
+	s.Assert().NotEmpty(createAccountRes.AccountID)
 	s.Assert().Nil(err)
 }
 
 func (s *IntegrationTestSuite) TestDeactivate() {
-	createRes, err := s.svc.Create(
-		service.CreateRequest{
+	createUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
-	err = s.svc.Deactivate(
-		service.DeactivateRequest{
-			UserID: createRes.ID,
-		},
+	createAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createUserRes),
+	)
+
+	s.Assert().Nil(err)
+
+	err = s.svc.DeactivateUser(
+		service.DeactivateUserRequest(createUserRes),
 	)
 
 	s.Assert().Nil(err)
 
 	balanceRes, err := s.svc.Balance(
 		service.BalanceRequest{
-			UserID:    createRes.ID,
-			AccountID: createRes.AccountIDs[0],
+			UserID:    createUserRes.UserID,
+			AccountID: createAccountRes.AccountID,
 		},
 	)
 
@@ -73,18 +90,24 @@ func (s *IntegrationTestSuite) TestDeactivate() {
 }
 
 func (s *IntegrationTestSuite) TestDeposit() {
-	createRes, err := s.svc.Create(
-		service.CreateRequest{
+	createUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
+	createAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createUserRes),
+	)
+
+	s.Assert().Nil(err)
+
 	depositRes, err := s.svc.Deposit(
 		service.DepositRequest{
-			UserID:    createRes.ID,
-			AccountID: createRes.AccountIDs[0],
+			UserID:    createUserRes.UserID,
+			AccountID: createAccountRes.AccountID,
 			Amount:    10,
 		},
 	)
@@ -94,18 +117,24 @@ func (s *IntegrationTestSuite) TestDeposit() {
 }
 
 func (s *IntegrationTestSuite) TestWithdraw() {
-	createRes, err := s.svc.Create(
-		service.CreateRequest{
+	createUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
+	createAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createUserRes),
+	)
+
+	s.Assert().Nil(err)
+
 	depositRes, err := s.svc.Deposit(
 		service.DepositRequest{
-			UserID:    createRes.ID,
-			AccountID: createRes.AccountIDs[0],
+			UserID:    createUserRes.UserID,
+			AccountID: createAccountRes.AccountID,
 			Amount:    20,
 		},
 	)
@@ -115,8 +144,8 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 	withdrawRes, err := s.svc.Withdraw(
 		service.WithdrawRequest{
-			UserID:    createRes.ID,
-			AccountID: createRes.AccountIDs[0],
+			UserID:    createUserRes.UserID,
+			AccountID: createAccountRes.AccountID,
 			Amount:    10,
 		},
 	)
@@ -126,26 +155,38 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 }
 
 func (s *IntegrationTestSuite) TestTransfer() {
-	createJoeRes, err := s.svc.Create(
-		service.CreateRequest{
+	createJoeUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
-	createMaryRes, err := s.svc.Create(
-		service.CreateRequest{
+	createJoeAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createJoeUserRes),
+	)
+
+	s.Assert().Nil(err)
+
+	createMaryUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "mary",
 		},
 	)
 
 	s.Assert().Nil(err)
 
+	createMaryAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createMaryUserRes),
+	)
+
+	s.Assert().Nil(err)
+
 	depositRes, err := s.svc.Deposit(
 		service.DepositRequest{
-			UserID:    createJoeRes.ID,
-			AccountID: createJoeRes.AccountIDs[0],
+			UserID:    createJoeUserRes.UserID,
+			AccountID: createJoeAccountRes.AccountID,
 			Amount:    20,
 		},
 	)
@@ -155,10 +196,10 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	transferRes, err := s.svc.Transfer(
 		service.TransferRequest{
-			SenderUserID:      createJoeRes.ID,
-			ReceiverUserID:    createMaryRes.ID,
-			SenderAccountID:   createJoeRes.AccountIDs[0],
-			ReceiverAccountID: createMaryRes.AccountIDs[0],
+			SenderUserID:      createJoeUserRes.UserID,
+			ReceiverUserID:    createMaryUserRes.UserID,
+			SenderAccountID:   createJoeAccountRes.AccountID,
+			ReceiverAccountID: createMaryAccountRes.AccountID,
 			Amount:            10,
 		},
 	)
@@ -168,8 +209,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	balanceMaryRes, err := s.svc.Balance(
 		service.BalanceRequest{
-			UserID:    createMaryRes.ID,
-			AccountID: createMaryRes.AccountIDs[0],
+			UserID:    createMaryUserRes.UserID,
+			AccountID: createMaryAccountRes.AccountID,
 		},
 	)
 
@@ -178,18 +219,24 @@ func (s *IntegrationTestSuite) TestTransfer() {
 }
 
 func (s *IntegrationTestSuite) TestBalance() {
-	createRes, err := s.svc.Create(
-		service.CreateRequest{
+	createUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
+	createAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createUserRes),
+	)
+
+	s.Assert().Nil(err)
+
 	balanceRes, err := s.svc.Balance(
 		service.BalanceRequest{
-			UserID:    createRes.ID,
-			AccountID: createRes.AccountIDs[0],
+			UserID:    createUserRes.UserID,
+			AccountID: createAccountRes.AccountID,
 		},
 	)
 
@@ -197,27 +244,39 @@ func (s *IntegrationTestSuite) TestBalance() {
 	s.Assert().Nil(err)
 }
 
-func (s *IntegrationTestSuite) TestHistory() {
-	createJoeRes, err := s.svc.Create(
-		service.CreateRequest{
+func (s *IntegrationTestSuite) TestTransactions() {
+	createJoeUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "joe",
 		},
 	)
 
 	s.Assert().Nil(err)
 
-	createMaryRes, err := s.svc.Create(
-		service.CreateRequest{
+	createJoeAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createJoeUserRes),
+	)
+
+	s.Assert().Nil(err)
+
+	createMaryUserRes, err := s.svc.CreateUser(
+		service.CreateUserRequest{
 			Name: "mary",
 		},
 	)
 
 	s.Assert().Nil(err)
 
+	createMaryAccountRes, err := s.svc.CreateAccount(
+		service.CreateAccountRequest(createMaryUserRes),
+	)
+
+	s.Assert().Nil(err)
+
 	depositRes, err := s.svc.Deposit(
 		service.DepositRequest{
-			UserID:    createJoeRes.ID,
-			AccountID: createJoeRes.AccountIDs[0],
+			UserID:    createJoeUserRes.UserID,
+			AccountID: createJoeAccountRes.AccountID,
 			Amount:    20,
 		},
 	)
@@ -227,10 +286,10 @@ func (s *IntegrationTestSuite) TestHistory() {
 
 	transferRes, err := s.svc.Transfer(
 		service.TransferRequest{
-			SenderUserID:      createJoeRes.ID,
-			ReceiverUserID:    createMaryRes.ID,
-			SenderAccountID:   createJoeRes.AccountIDs[0],
-			ReceiverAccountID: createMaryRes.AccountIDs[0],
+			SenderUserID:      createJoeUserRes.UserID,
+			ReceiverUserID:    createMaryUserRes.UserID,
+			SenderAccountID:   createJoeAccountRes.AccountID,
+			ReceiverAccountID: createMaryAccountRes.AccountID,
 			Amount:            10,
 		},
 	)
@@ -240,57 +299,57 @@ func (s *IntegrationTestSuite) TestHistory() {
 
 	balanceMaryRes, err := s.svc.Balance(
 		service.BalanceRequest{
-			UserID:    createMaryRes.ID,
-			AccountID: createMaryRes.AccountIDs[0],
+			UserID:    createMaryUserRes.UserID,
+			AccountID: createMaryAccountRes.AccountID,
 		},
 	)
 
 	s.Assert().Equal(service.BalanceResponse{Balance: 10}, balanceMaryRes)
 	s.Assert().Nil(err)
 
-	historyJoeRes, err := s.svc.History(
-		service.HistoryRequest{
-			UserID:    createJoeRes.ID,
-			AccountID: createJoeRes.AccountIDs[0],
+	transactionsJoeRes, err := s.svc.Transactions(
+		service.TransactionsRequest{
+			UserID:    createJoeUserRes.UserID,
+			AccountID: createJoeAccountRes.AccountID,
 		},
 	)
 
-	s.Assert().Equal(2, len(historyJoeRes.Events))
+	s.Assert().Equal(2, len(transactionsJoeRes.Transactions))
 
-	s.Assert().NotEmpty(historyJoeRes.Events[0].Timestamp)
-	s.Assert().Equal("deposit", historyJoeRes.Events[0].Operation)
-	s.Assert().Equal(20, historyJoeRes.Events[0].Amount)
-	s.Assert().Empty(historyJoeRes.Events[0].ReceiverUserID)
-	s.Assert().Empty(historyJoeRes.Events[0].SenderUserID)
-	s.Assert().Empty(historyJoeRes.Events[0].ReceiverAccountID)
-	s.Assert().Empty(historyJoeRes.Events[0].SenderAccountID)
+	s.Assert().NotEmpty(transactionsJoeRes.Transactions[0].Timestamp)
+	s.Assert().Equal("deposit", transactionsJoeRes.Transactions[0].Operation)
+	s.Assert().Equal(20, transactionsJoeRes.Transactions[0].Amount)
+	s.Assert().Empty(transactionsJoeRes.Transactions[0].ReceiverUserID)
+	s.Assert().Empty(transactionsJoeRes.Transactions[0].SenderUserID)
+	s.Assert().Empty(transactionsJoeRes.Transactions[0].ReceiverAccountID)
+	s.Assert().Empty(transactionsJoeRes.Transactions[0].SenderAccountID)
 
-	s.Assert().NotEmpty(historyJoeRes.Events[1].Timestamp)
-	s.Assert().Equal("transfer", historyJoeRes.Events[1].Operation)
-	s.Assert().Equal(10, historyJoeRes.Events[1].Amount)
-	s.Assert().Equal(createMaryRes.ID, historyJoeRes.Events[1].ReceiverUserID)
-	s.Assert().Empty(historyJoeRes.Events[1].SenderUserID)
-	s.Assert().Equal(createMaryRes.AccountIDs[0], historyJoeRes.Events[1].ReceiverAccountID)
-	s.Assert().Empty(historyJoeRes.Events[1].SenderAccountID)
+	s.Assert().NotEmpty(transactionsJoeRes.Transactions[1].Timestamp)
+	s.Assert().Equal("transfer", transactionsJoeRes.Transactions[1].Operation)
+	s.Assert().Equal(10, transactionsJoeRes.Transactions[1].Amount)
+	s.Assert().Equal(createMaryUserRes.UserID, transactionsJoeRes.Transactions[1].ReceiverUserID)
+	s.Assert().Empty(transactionsJoeRes.Transactions[1].SenderUserID)
+	s.Assert().Equal(createMaryAccountRes.AccountID, transactionsJoeRes.Transactions[1].ReceiverAccountID)
+	s.Assert().Empty(transactionsJoeRes.Transactions[1].SenderAccountID)
 
 	s.Assert().Nil(err)
 
-	historyMaryRes, err := s.svc.History(
-		service.HistoryRequest{
-			UserID:    createMaryRes.ID,
-			AccountID: createMaryRes.AccountIDs[0],
+	transactionsMaryRes, err := s.svc.Transactions(
+		service.TransactionsRequest{
+			UserID:    createMaryUserRes.UserID,
+			AccountID: createMaryAccountRes.AccountID,
 		},
 	)
 
-	s.Assert().Equal(1, len(historyMaryRes.Events))
+	s.Assert().Equal(1, len(transactionsMaryRes.Transactions))
 
-	s.Assert().NotEmpty(historyMaryRes.Events[0].Timestamp)
-	s.Assert().Equal("transfer", historyMaryRes.Events[0].Operation)
-	s.Assert().Equal(10, historyMaryRes.Events[0].Amount)
-	s.Assert().Empty(historyMaryRes.Events[0].ReceiverUserID)
-	s.Assert().Equal(createJoeRes.ID, historyMaryRes.Events[0].SenderUserID)
-	s.Assert().Empty(historyMaryRes.Events[0].ReceiverAccountID)
-	s.Assert().Equal(createJoeRes.AccountIDs[0], historyMaryRes.Events[0].SenderAccountID)
+	s.Assert().NotEmpty(transactionsMaryRes.Transactions[0].Timestamp)
+	s.Assert().Equal("transfer", transactionsMaryRes.Transactions[0].Operation)
+	s.Assert().Equal(10, transactionsMaryRes.Transactions[0].Amount)
+	s.Assert().Empty(transactionsMaryRes.Transactions[0].ReceiverUserID)
+	s.Assert().Equal(createJoeUserRes.UserID, transactionsMaryRes.Transactions[0].SenderUserID)
+	s.Assert().Empty(transactionsMaryRes.Transactions[0].ReceiverAccountID)
+	s.Assert().Equal(createJoeAccountRes.AccountID, transactionsMaryRes.Transactions[0].SenderAccountID)
 
 	s.Assert().Nil(err)
 }

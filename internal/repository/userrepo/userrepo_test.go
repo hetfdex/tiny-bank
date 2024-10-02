@@ -14,8 +14,7 @@ func TestCreate_Ok(t *testing.T) {
 
 	res, err := repo.Create(
 		CreateRequest{
-			Name:      "joe",
-			AccountID: "1234",
+			Name: "joe",
 		},
 	)
 
@@ -23,8 +22,7 @@ func TestCreate_Ok(t *testing.T) {
 	assert.NotEmpty(t, res.CreatedAt)
 	assert.True(t, res.Active)
 	assert.Equal(t, "joe", res.Name)
-	assert.Equal(t, 1, len(res.AccountIDs))
-	assert.Equal(t, "1234", res.AccountIDs[0])
+	assert.Equal(t, 0, len(res.AccountIDs))
 
 	assert.Nil(t, err)
 }
@@ -44,11 +42,13 @@ func TestRead_ErrUserNotFound(t *testing.T) {
 
 func TestRead_ErrUserNotActive(t *testing.T) {
 	user := domain.User{
-		ID:         "1234",
-		CreatedAt:  time.Now().UTC(),
-		Active:     false,
-		Name:       "joe",
-		AccountIDs: []string{"5678"},
+		ID:        "1234",
+		CreatedAt: time.Now().UTC(),
+		Active:    false,
+		Name:      "joe",
+		AccountIDs: map[string]struct{}{
+			"5678": {},
+		},
 	}
 
 	users := make(map[string]domain.User)
@@ -69,11 +69,13 @@ func TestRead_ErrUserNotActive(t *testing.T) {
 
 func TestRead_Ok(t *testing.T) {
 	user := domain.User{
-		ID:         "1234",
-		CreatedAt:  time.Now().UTC(),
-		Active:     true,
-		Name:       "joe",
-		AccountIDs: []string{"5678"},
+		ID:        "1234",
+		CreatedAt: time.Now().UTC(),
+		Active:    true,
+		Name:      "joe",
+		AccountIDs: map[string]struct{}{
+			"5678": {},
+		},
 	}
 
 	users := make(map[string]domain.User)
@@ -92,11 +94,11 @@ func TestRead_Ok(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestUpdate_ErrUserNotFound(t *testing.T) {
+func TestUpdateStatus_ErrUserNotFound(t *testing.T) {
 	repo := New(make(map[string]domain.User))
 
-	err := repo.Update(
-		UpdateRequest{
+	err := repo.UpdateStatus(
+		UpdateStatusRequest{
 			ID: "1234",
 		},
 	)
@@ -104,21 +106,23 @@ func TestUpdate_ErrUserNotFound(t *testing.T) {
 	assert.Equal(t, errors.New("user not found"), err)
 }
 
-func TestUpdate_OkNoChange(t *testing.T) {
+func TestUpdateStatus_Ok(t *testing.T) {
 	users := make(map[string]domain.User)
 
 	users["1234"] = domain.User{
-		ID:         "1234",
-		CreatedAt:  time.Now().UTC(),
-		Active:     false,
-		Name:       "joe",
-		AccountIDs: []string{"5678"},
+		ID:        "1234",
+		CreatedAt: time.Now().UTC(),
+		Active:    true,
+		Name:      "joe",
+		AccountIDs: map[string]struct{}{
+			"5678": {},
+		},
 	}
 
 	repo := New(users)
 
-	err := repo.Update(
-		UpdateRequest{
+	err := repo.UpdateStatus(
+		UpdateStatusRequest{
 			ID:     "1234",
 			Active: false,
 		},
@@ -127,23 +131,62 @@ func TestUpdate_OkNoChange(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestUpdate_Ok(t *testing.T) {
+func TestUpdateAccountIDs_ErrUserNotFound(t *testing.T) {
+	repo := New(make(map[string]domain.User))
+
+	err := repo.UpdateAccountIDs(
+		UpdateAccountIDsRequest{
+			ID: "1234",
+		},
+	)
+
+	assert.Equal(t, errors.New("user not found"), err)
+}
+
+func TestUpdateAccountIDs_ErrDuplicateAccountID(t *testing.T) {
 	users := make(map[string]domain.User)
 
 	users["1234"] = domain.User{
-		ID:         "1234",
-		CreatedAt:  time.Now().UTC(),
-		Active:     true,
-		Name:       "joe",
-		AccountIDs: []string{"5678"},
+		ID:        "1234",
+		CreatedAt: time.Now().UTC(),
+		Active:    true,
+		Name:      "joe",
+		AccountIDs: map[string]struct{}{
+			"5678": {},
+		},
 	}
 
 	repo := New(users)
 
-	err := repo.Update(
-		UpdateRequest{
-			ID:     "1234",
-			Active: false,
+	err := repo.UpdateAccountIDs(
+		UpdateAccountIDsRequest{
+			ID:        "1234",
+			AccountID: "5678",
+		},
+	)
+
+	assert.Equal(t, errors.New("duplicate account id"), err)
+}
+
+func TestUpdatAccountIDs_Ok(t *testing.T) {
+	users := make(map[string]domain.User)
+
+	users["1234"] = domain.User{
+		ID:        "1234",
+		CreatedAt: time.Now().UTC(),
+		Active:    true,
+		Name:      "joe",
+		AccountIDs: map[string]struct{}{
+			"5678": {},
+		},
+	}
+
+	repo := New(users)
+
+	err := repo.UpdateAccountIDs(
+		UpdateAccountIDsRequest{
+			ID:        "1234",
+			AccountID: "9012",
 		},
 	)
 

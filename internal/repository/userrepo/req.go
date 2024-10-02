@@ -1,15 +1,19 @@
 package userrepo
 
 type CreateRequest struct {
-	Name      string
-	AccountID string
+	Name string
 }
 
 type ReadRequest struct {
 	ID string
 }
 
-type UpdateRequest struct {
+type UpdateStatusRequest struct {
 	ID     string
 	Active bool
+}
+
+type UpdateAccountIDsRequest struct {
+	ID        string
+	AccountID string
 }

@@ -1,14 +1,19 @@
 package accountrepo
 
-type CreateRequest struct {
-	HistoryID string
-}
+import "github.com/hetfdex/tiny-bank/internal/domain"
+
+type CreateRequest struct{}
 
 type ReadRequest struct {
 	ID string
 }
 
-type UpdateRequest struct {
+type UpdateBalanceRequest struct {
 	ID      string
 	Balance int
+}
+
+type UpdateTransactionsRequest struct {
+	ID          string
+	Transaction domain.Transaction
 }

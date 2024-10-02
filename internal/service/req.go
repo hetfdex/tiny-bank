@@ -1,10 +1,14 @@
 package service
 
-type CreateRequest struct {
+type CreateUserRequest struct {
 	Name string `json:"name"`
 }
 
-type DeactivateRequest struct {
+type CreateAccountRequest struct {
+	UserID string `json:"user_id"`
+}
+
+type DeactivateUserRequest struct {
 	UserID string `json:"user_id"`
 }
 
@@ -33,7 +37,7 @@ type BalanceRequest struct {
 	AccountID string `json:"account_id"`
 }
 
-type HistoryRequest struct {
+type TransactionsRequest struct {
 	UserID    string `json:"user_id"`
 	AccountID string `json:"account_id"`
 }

@@ -33,8 +33,8 @@ func TestCreate_ErrJSON(t *testing.T) {
 	assert.Equal(t, "{\"error\":\"invalid request\"}", rr.Body.String())
 }
 
-func TestCreate_ErrCreate(t *testing.T) {
-	req := service.CreateRequest{
+func TestCreateUser_ErrCreate(t *testing.T) {
+	req := service.CreateUserRequest{
 		Name: "joe",
 	}
 
@@ -48,10 +48,10 @@ func TestCreate_ErrCreate(t *testing.T) {
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"Create",
+		"CreateUser",
 		req,
 	).Return(
-		service.CreateResponse{},
+		service.CreateUserResponse{},
 		errors.New("error create"),
 	)
 
@@ -63,8 +63,8 @@ func TestCreate_ErrCreate(t *testing.T) {
 	assert.Equal(t, "{\"error\":\"error create\"}", rr.Body.String())
 }
 
-func TestCreate_Ok(t *testing.T) {
-	req := service.CreateRequest{
+func TestCreateUser_Ok(t *testing.T) {
+	req := service.CreateUserRequest{
 		Name: "joe",
 	}
 
@@ -78,12 +78,11 @@ func TestCreate_Ok(t *testing.T) {
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"Create",
+		"CreateUser",
 		req,
 	).Return(
-		service.CreateResponse{
-			ID:         "1",
-			AccountIDs: []string{"2"},
+		service.CreateUserResponse{
+			UserID: "1",
 		},
 		nil,
 	)
@@ -93,11 +92,69 @@ func TestCreate_Ok(t *testing.T) {
 	rr := setupTest(hdl, httpReq)
 
 	assert.Equal(t, http.StatusCreated, rr.Result().StatusCode)
-	assert.Equal(t, "{\"ID\":\"1\",\"AccountIDs\":[\"2\"]}", rr.Body.String())
+	assert.Equal(t, "{\"user_id\":\"1\"}", rr.Body.String())
 }
 
-func TestDeactivate_ErrDeactivate(t *testing.T) {
-	req := service.DeactivateRequest{
+func TestCreateAccount_ErrCreate(t *testing.T) {
+	httpReq := makeHTTPRequest(
+		t,
+		http.MethodPost,
+		baseURL+"1",
+		nil,
+	)
+
+	svc := &servicemock.Mock{}
+
+	svc.On(
+		"CreateAccount",
+		service.CreateAccountRequest{
+			UserID: "1",
+		},
+	).Return(
+		service.CreateAccountResponse{},
+		errors.New("error create"),
+	)
+
+	hdl := New(svc)
+
+	rr := setupTest(hdl, httpReq)
+
+	assert.Equal(t, http.StatusInternalServerError, rr.Result().StatusCode)
+	assert.Equal(t, "{\"error\":\"error create\"}", rr.Body.String())
+}
+
+func TestCreateAccount_Ok(t *testing.T) {
+	httpReq := makeHTTPRequest(
+		t,
+		http.MethodPost,
+		baseURL+"1",
+		nil,
+	)
+
+	svc := &servicemock.Mock{}
+
+	svc.On(
+		"CreateAccount",
+		service.CreateAccountRequest{
+			UserID: "1",
+		},
+	).Return(
+		service.CreateAccountResponse{
+			AccountID: "2",
+		},
+		nil,
+	)
+
+	hdl := New(svc)
+
+	rr := setupTest(hdl, httpReq)
+
+	assert.Equal(t, http.StatusCreated, rr.Result().StatusCode)
+	assert.Equal(t, "{\"account_id\":\"2\"}", rr.Body.String())
+}
+
+func TestDeactivateUser_ErrDeactivate(t *testing.T) {
+	req := service.DeactivateUserRequest{
 		UserID: "1",
 	}
 
@@ -111,7 +168,7 @@ func TestDeactivate_ErrDeactivate(t *testing.T) {
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"Deactivate",
+		"DeactivateUser",
 		req,
 	).Return(
 		errors.New("error deactivate"),
@@ -125,8 +182,8 @@ func TestDeactivate_ErrDeactivate(t *testing.T) {
 	assert.Equal(t, "{\"error\":\"error deactivate\"}", rr.Body.String())
 }
 
-func TestDeactivate_Ok(t *testing.T) {
-	req := service.DeactivateRequest{
+func TestDeactivateUser_Ok(t *testing.T) {
+	req := service.DeactivateUserRequest{
 		UserID: "1",
 	}
 
@@ -140,7 +197,7 @@ func TestDeactivate_Ok(t *testing.T) {
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"Deactivate",
+		"DeactivateUser",
 		req,
 	).Return(
 		nil,
@@ -480,25 +537,25 @@ func TestBalance_Ok(t *testing.T) {
 	assert.Equal(t, "{\"balance\":10}", rr.Body.String())
 }
 
-func TestHistory_ErrHistory(t *testing.T) {
+func TestTransactions_ErrTransaction(t *testing.T) {
 	httpReq := makeHTTPRequest(
 		t,
 		http.MethodGet,
-		baseURL+"1/accounts/2/histories",
+		baseURL+"1/accounts/2/transactions",
 		nil,
 	)
 
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"History",
-		service.HistoryRequest{
+		"Transactions",
+		service.TransactionsRequest{
 			UserID:    "1",
 			AccountID: "2",
 		},
 	).Return(
-		service.HistoryResponse{},
-		errors.New("error history"),
+		service.TransactionsResponse{},
+		errors.New("error transaction"),
 	)
 
 	hdl := New(svc)
@@ -506,28 +563,28 @@ func TestHistory_ErrHistory(t *testing.T) {
 	rr := setupTest(hdl, httpReq)
 
 	assert.Equal(t, http.StatusInternalServerError, rr.Result().StatusCode)
-	assert.Equal(t, "{\"error\":\"error history\"}", rr.Body.String())
+	assert.Equal(t, "{\"error\":\"error transaction\"}", rr.Body.String())
 }
 
-func TestHistory_Ok(t *testing.T) {
+func TestTransactions_Ok(t *testing.T) {
 	httpReq := makeHTTPRequest(
 		t,
 		http.MethodGet,
-		baseURL+"1/accounts/2/histories",
+		baseURL+"1/accounts/2/transactions",
 		nil,
 	)
 
 	svc := &servicemock.Mock{}
 
 	svc.On(
-		"History",
-		service.HistoryRequest{
+		"Transactions",
+		service.TransactionsRequest{
 			UserID:    "1",
 			AccountID: "2",
 		},
 	).Return(
-		service.HistoryResponse{
-			Events: []domain.Event{
+		service.TransactionsResponse{
+			Transactions: []domain.Transaction{
 				{
 					Timestamp:         time.Time{},
 					Operation:         "operation",
@@ -547,7 +604,7 @@ func TestHistory_Ok(t *testing.T) {
 	rr := setupTest(hdl, httpReq)
 
 	assert.Equal(t, http.StatusOK, rr.Result().StatusCode)
-	assert.Equal(t, "{\"events\":[{\"Timestamp\":\"0001-01-01T00:00:00Z\",\"Operation\":\"operation\",\"Amount\":666,\"ReceiverUserID\":\"1\",\"SenderUserID\":\"2\",\"ReceiverAccountID\":\"3\",\"SenderAccountID\":\"4\"}]}", rr.Body.String())
+	assert.Equal(t, "{\"transactions\":[{\"Timestamp\":\"0001-01-01T00:00:00Z\",\"Operation\":\"operation\",\"Amount\":666,\"ReceiverUserID\":\"1\",\"SenderUserID\":\"2\",\"ReceiverAccountID\":\"3\",\"SenderAccountID\":\"4\"}]}", rr.Body.String())
 }
 
 func setupTest(hdl Handler, req *http.Request) *httptest.ResponseRecorder {
