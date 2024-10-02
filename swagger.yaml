@@ -1,25 +1,58 @@
+
 openapi: 3.0.0
 info:
   title: Tiny Bank API
+  description: This is a simple API for simulating a tiny bank. It supports basic operations like creating users, managing accounts, and transferring funds.
   version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
 paths:
-  /api/v1/users/:
+  /api/v1/users:
     post:
       summary: Create a new user
       requestBody:
+        description: Information about the new user
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateRequest"
+              $ref: '#/components/schemas/CreateUserRequest'
       responses:
-        "201":
+        '201':
           description: User created successfully
-        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
           description: Bad request
-        "500":
+        '500':
           description: Internal server error
+
   /api/v1/users/{user_id}:
+    post:
+      summary: Create an account for a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccountResponse'
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+
     delete:
       summary: Deactivate a user
       parameters:
@@ -29,13 +62,16 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: User deactivated successfully
-        "500":
+        '400':
+          description: Bad request
+        '500':
           description: Internal server error
+
   /api/v1/users/{user_id}/accounts/{account_id}:
     put:
-      summary: Deposit into an account
+      summary: Deposit money into an account
       parameters:
         - name: user_id
           in: path
@@ -48,20 +84,26 @@ paths:
           schema:
             type: string
       requestBody:
+        description: Amount to deposit
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DepositRequest"
+              $ref: '#/components/schemas/DepositRequest'
       responses:
-        "200":
+        '200':
           description: Deposit successful
-        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositResponse'
+        '400':
           description: Bad request
-        "500":
+        '500':
           description: Internal server error
+
     patch:
-      summary: Withdraw from an account
+      summary: Withdraw money from an account
       parameters:
         - name: user_id
           in: path
@@ -74,20 +116,26 @@ paths:
           schema:
             type: string
       requestBody:
+        description: Amount to withdraw
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WithdrawRequest"
+              $ref: '#/components/schemas/WithdrawRequest'
       responses:
-        "200":
-          description: Withdrawal successful
-        "400":
+        '200':
+          description: Withdraw successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WithdrawResponse'
+        '400':
           description: Bad request
-        "500":
+        '500':
           description: Internal server error
+
     post:
-      summary: Transfer between accounts
+      summary: Transfer money between accounts
       parameters:
         - name: user_id
           in: path
@@ -100,18 +148,24 @@ paths:
           schema:
             type: string
       requestBody:
+        description: Transfer details
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TransferRequest"
+              $ref: '#/components/schemas/TransferRequest'
       responses:
-        "200":
+        '200':
           description: Transfer successful
-        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferResponse'
+        '400':
           description: Bad request
-        "500":
+        '500':
           description: Internal server error
+
     get:
       summary: Get account balance
       parameters:
@@ -126,13 +180,20 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Account balance retrieved successfully
-        "500":
+        '200':
+          description: Account balance retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '400':
+          description: Bad request
+        '500':
           description: Internal server error
+
   /api/v1/users/{user_id}/accounts/{account_id}/transactions:
     get:
-      summary: Get account transactions
+      summary: Get transaction history
       parameters:
         - name: user_id
           in: path
@@ -145,33 +206,122 @@ paths:
           schema:
             type: string
       responses:
-        "200":
-          description: Account transaction retrieved successfully
-        "500":
+        '200':
+          description: Transaction history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsResponse'
+        '400':
+          description: Bad request
+        '500':
           description: Internal server error
+
 components:
   schemas:
-    CreateRequest:
+    CreateUserRequest:
       type: object
       properties:
         name:
           type: string
+          example: John Doe
+
+    CreateUserResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: 12345
+
+    CreateAccountResponse:
+      type: object
+      properties:
+        account_id:
+          type: string
+          example: 67890
+
     DepositRequest:
       type: object
       properties:
         amount:
-          type: number
+          type: integer
+          example: 1000
+
+    DepositResponse:
+      type: object
+      properties:
+        balance:
+          type: integer
+          example: 1500
+
     WithdrawRequest:
       type: object
       properties:
         amount:
-          type: number
+          type: integer
+          example: 500
+
+    WithdrawResponse:
+      type: object
+      properties:
+        balance:
+          type: integer
+          example: 1000
+
     TransferRequest:
       type: object
       properties:
         receiver_user_id:
           type: string
+          example: 54321
         receiver_account_id:
           type: string
+          example: 09876
         amount:
-          type: number
+          type: integer
+          example: 250
+
+    TransferResponse:
+      type: object
+      properties:
+        balance:
+          type: integer
+          example: 750
+
+    BalanceResponse:
+      type: object
+      properties:
+        balance:
+          type: integer
+          example: 1000
+
+    TransactionsResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            type: object
+            properties:
+              operation:
+                type: string
+                example: deposit
+              receiver_user_id:
+                type: string
+                example: 1234
+              sender_user_id:
+                type: string
+                example: 1234
+              receiver_account_id:
+                type: string
+                example: 1234
+              sender_account_id:
+                type: string
+                example: 1234
+              amount:
+                type: integer
+                example: 1000
+              timestamp:
+                type: string
+                format: date-time
+                example: 2023-09-23T10:00:00Z
